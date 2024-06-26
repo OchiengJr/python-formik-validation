@@ -1,37 +1,30 @@
 #!/usr/bin/env python3
 
-import email
-from random import choice as rc, randint
-
+from random import randint
 from faker import Faker
+from sqlalchemy.exc import IntegrityError
 
 from app import app
 from models import db, Customer
 
-
 fake = Faker()
 
-usernames = [fake.first_name() for i in range(4)]
-if "Duane" not in usernames:
-    usernames.append("Duane")
-
-def make_customers():
-
+def make_customers(num_customers=10):
     Customer.query.delete()
-    
-    customers = []
 
-    for i in range(3):
-        customer = Customer(
-            email=fake.email(),
-            age= randint(0, 125),
-            name=fake.name()
-        )
-        customers.append(customer)
+    for _ in range(num_customers):
+        try:
+            customer = Customer(
+                email=fake.unique.email(),
+                age=randint(18, 80),
+                name=fake.name()
+            )
+            db.session.add(customer)
+        except IntegrityError:
+            db.session.rollback()  # Rollback if email is not unique
 
-    db.session.add_all(customers)
-    db.session.commit()        
+    db.session.commit()
 
 if __name__ == '__main__':
     with app.app_context():
-        make_customers()
+        make_customers(num_customers=20)  # Generate 20 customers for example
